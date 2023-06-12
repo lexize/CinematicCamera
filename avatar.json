@@ -1,0 +1,9 @@
+{
+	"name": "Cinematic Camera",
+	"authors": [
+		"Lexize - core, idea"
+	],
+	"autoScripts": [
+		"main"
+	]
+}
