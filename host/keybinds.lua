@@ -4,6 +4,9 @@ local defaultKeybinds = {
     {"move_backward", "key.keyboard.s"},
     {"move_left", "key.keyboard.a"},
     {"move_right", "key.keyboard.d"},
+    {"move_up", "key.keyboard.space"},
+    {"move_down", "key.keyboard.left.control"},
+
 
     {"modifier_multiply", "key.keyboard.left.shift"},
     {"modifier_divide", "key.keyboard.left.alt"},
@@ -34,7 +37,7 @@ events.TICK:register(function ()
     local changed = false;
     for keybind, keybindObject in pairs(loadedKeybinds) do
         local k = keybindObject:getKey();
-        if (k ~= savedKeybinds[keybind] and k ~= defaultKeybindKeys[keybind]) then
+        if ((savedKeybinds[keybind] ~= nil and savedKeybinds[keybind] ~= k) or (defaultKeybindKeys[keybind] ~= k)) then
             savedKeybinds[keybind] = k;
             changed = true;
         end
