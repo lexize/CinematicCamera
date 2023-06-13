@@ -1,4 +1,5 @@
 local keybinds = require("host.keybinds");
+local configuration = require("host.configuration").values;
 local translation = require("utils.translation");
 
 ---@enum CameraModes
@@ -45,12 +46,12 @@ events.TICK:register(function ()
     currentCameraPosition = nextCameraPosition:copy();
     local yaw = cameraRotation.y;
     local moveVec = vec(0,0,0);
-    if (kbMoveForward:isPressed()) then moveVec.z = moveVec.z + 1; end
-    if (kbMoveBackward:isPressed()) then moveVec.z = moveVec.z - 1; end
-    if (kbMoveLeft:isPressed()) then moveVec.x = moveVec.x + 1; end
-    if (kbMoveRight:isPressed()) then moveVec.x = moveVec.x - 1; end
-    if (kbMoveUp:isPressed()) then moveVec.y = moveVec.y + 1; end
-    if (kbMoveDown:isPressed()) then moveVec.y = moveVec.y - 1; end
+    if (kbMoveForward:isPressed()) then moveVec.z = moveVec.z + configuration.camera_move_speed; end
+    if (kbMoveBackward:isPressed()) then moveVec.z = moveVec.z - configuration.camera_move_speed; end
+    if (kbMoveLeft:isPressed()) then moveVec.x = moveVec.x + configuration.camera_move_speed; end
+    if (kbMoveRight:isPressed()) then moveVec.x = moveVec.x - configuration.camera_move_speed; end
+    if (kbMoveUp:isPressed()) then moveVec.y = moveVec.y + configuration.camera_move_speed; end
+    if (kbMoveDown:isPressed()) then moveVec.y = moveVec.y - configuration.camera_move_speed; end
     nextCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
 end)
 
@@ -67,9 +68,9 @@ events.RENDER:register(function (delta, ctx)
     end
 end)
 events.MOUSE_MOVE:register(function (x, y)
-    if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then
-        cameraRotation.y = cameraRotation.y + x;
-        cameraRotation.x = cameraRotation.x + y;
+    if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then 
+        cameraRotation.y = cameraRotation.y + ((x / 2.5) * configuration.camera_sensetivity);
+        cameraRotation.x = cameraRotation.x + ((y / 2.5) * configuration.camera_sensetivity);
     end
     return currentCameraMode ~= camera_modes.STANDARD;
 end)

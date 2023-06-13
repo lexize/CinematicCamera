@@ -89,4 +89,4 @@ function ui_element:getSize()
     return vec(self:getWidth(), self:getHeight());
 end
 
-return require("utils").createLibWrapper(uiElementMetatable);
+return require("utils").createReadonlyTable(uiElementMetatable);

@@ -1,4 +1,3 @@
-config:setName("CinematicCamera");
 local defaultKeybinds = {
     {"move_forward", "key.keyboard.w"},
     {"move_backward", "key.keyboard.s"},
@@ -47,4 +46,4 @@ events.TICK:register(function ()
     end
 end);
 
-return require("utils").createLibWrapper(loadedKeybinds);
+return require("utils").createReadonlyTable(loadedKeybinds);

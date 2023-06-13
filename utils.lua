@@ -1,12 +1,22 @@
 local utils = {};
 
 ---@generic T
----@param lib T
+---@param table T
 ---@return T
-function utils.createLibWrapper(lib)
-	local metatable = { __index = lib };
+function utils.createReadonlyTable(table)
+	local metatable = { __index = table };
 	function metatable:__newindex() end
 	return setmetatable({}, metatable);
 end
 
-return utils.createLibWrapper(utils);
+function utils.createRecurviseReadonlyTable(table)
+	local tbl = {};
+	for key, value in pairs(table) do
+		tbl[key] = type(value) == "table" and utils.createRecurviseReadonlyTable(value) or value;
+	end
+	local metatable = { __index = tbl };
+	function metatable:__newindex() end
+	return setmetatable({}, metatable);
+end
+
+return utils.createReadonlyTable(utils);

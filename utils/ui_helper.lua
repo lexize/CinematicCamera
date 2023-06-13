@@ -169,4 +169,4 @@ function ui_helper.finishRender()
     end
 end
 
-return require("utils").createLibWrapper(ui_helper);
+return require("utils").createReadonlyTable(ui_helper);

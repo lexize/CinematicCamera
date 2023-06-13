@@ -20,4 +20,4 @@ end
 function translationMetatable:__newindex(k, v)
     
 end
-return require("utils").createLibWrapper(setmetatable(translation, translationMetatable));
+return require("utils").createReadonlyTable(setmetatable(translation, translationMetatable));
