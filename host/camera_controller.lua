@@ -8,17 +8,13 @@ local camera_modes = {
     PLAY = 2
 }
 
+local rotationAxis = vec(0,1,0);
+
 local currentCameraMode = camera_modes.STANDARD;
-local currentCameraTransform = {
-    position = vec(0,0,0),
-    rotation = vec(0,0,0),
-    fov = 1
-}
-local nextCameraTransform = {
-    position = vec(0,0,0),
-    rotation = vec(0,0,0),
-    fov = 1
-}
+local currentCameraPosition = vec(0,0,0);
+local nextCameraPosition = vec(0,0,0);
+local cameraRotation = vec(0,0,0);
+local cameraFov = 1;
 
 local kbMoveForward = keybinds.move_forward;
 local kbMoveBackward = keybinds.move_backward;
@@ -28,13 +24,34 @@ local kbMoveUp = keybinds.move_up;
 local kbMoveDown = keybinds.move_down;
 local kbSwitchCameraMode = keybinds.switch_camera_mode;
 
+local function lockIfNotOnStandard()
+    return currentCameraMode ~= camera_modes.STANDARD;
+end
+
+kbMoveForward.press = lockIfNotOnStandard;
+kbMoveBackward.press = lockIfNotOnStandard;
+kbMoveLeft.press = lockIfNotOnStandard;
+kbMoveRight.press = lockIfNotOnStandard;
+kbMoveUp.press = lockIfNotOnStandard;
+kbMoveDown.press = lockIfNotOnStandard;
+
 kbSwitchCameraMode.press = function (self)
     currentCameraMode = (currentCameraMode + 1) % 3;
     host:actionbar(string.format("Switched mode to %s", translation["camera_mode."..currentCameraMode]));
 end
 
 events.TICK:register(function ()
-    
+    if (currentCameraMode ~= camera_modes.EDIT) then return end
+    currentCameraPosition = nextCameraPosition:copy();
+    local yaw = cameraRotation.y;
+    local moveVec = vec(0,0,0);
+    if (kbMoveForward:isPressed()) then moveVec.z = moveVec.z + 1; end
+    if (kbMoveBackward:isPressed()) then moveVec.z = moveVec.z - 1; end
+    if (kbMoveLeft:isPressed()) then moveVec.x = moveVec.x + 1; end
+    if (kbMoveRight:isPressed()) then moveVec.x = moveVec.x - 1; end
+    if (kbMoveUp:isPressed()) then moveVec.y = moveVec.y + 1; end
+    if (kbMoveDown:isPressed()) then moveVec.y = moveVec.y - 1; end
+    nextCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
 end)
 
 events.RENDER:register(function (delta, ctx)
@@ -43,10 +60,16 @@ events.RENDER:register(function (delta, ctx)
         renderer:setCameraRot(nil);
         renderer:setFOV(nil);
     elseif (currentCameraMode == camera_modes.EDIT) then
-        local pos = math.lerp(currentCameraTransform.position, nextCameraTransform.position, delta);
+        local pos = math.lerp(currentCameraPosition, nextCameraPosition, delta);
         renderer:setCameraPivot(pos);
-        local rot = math.lerp(currentCameraTransform.rotation, nextCameraTransform.rotation, delta);
-        renderer:setCameraRot(rot);
-        renderer:setFOV(math.lerp(currentCameraTransform.fov, nextCameraTransform.fov, delta));
+        renderer:setCameraRot(cameraRotation);
+        renderer:setFOV(cameraFov);
     end
+end)
+events.MOUSE_MOVE:register(function (x, y)
+    if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then
+        cameraRotation.y = cameraRotation.y + x;
+        cameraRotation.x = cameraRotation.x + y;
+    end
+    return currentCameraMode ~= camera_modes.STANDARD;
 end)
