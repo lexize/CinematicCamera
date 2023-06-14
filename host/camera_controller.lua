@@ -18,7 +18,7 @@ local cameraRotation = vec(0,0,0);
 local cameraFov = 1;
 local cameraSpeedModifier = 1;
 local moveSmothing = vec(0,0,0);
-local maxMoveTicks = 5;
+local positionCorrectionTicks = 5;
 
 local getters = {
     position = function ()
@@ -35,6 +35,9 @@ local getters = {
     end,
     camera_speed = function ()
         return cameraSpeedModifier
+    end,
+    pos_correction_ticks = function ()
+        return positionCorrectionTicks
     end
 }
 
@@ -98,7 +101,7 @@ kbResetCameraRoll.press = function ()
     end
 end
 
-events.TICK:register(function ()
+events.WORLD_TICK:register(function ()
     if (currentCameraMode ~= camera_modes.EDIT) then return end
     currentCameraPosition = nextCameraPosition:copy();
     local yaw = cameraRotation.y;
@@ -121,13 +124,13 @@ events.TICK:register(function ()
         (math.sign(moveVec.x) - (moveSmothing.x / speedModifier)) * speedModifier,
         (math.sign(moveVec.y) - (moveSmothing.y / speedModifier)) * speedModifier,
         (math.sign(moveVec.z) - (moveSmothing.z / speedModifier)) * speedModifier
-    ) / maxMoveTicks;
+    ) / positionCorrectionTicks;
     moveSmothing = moveSmothing + smoothingAddition;
     moveVec = configuration.camera_move_speed * moveSmothing;
     nextCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
 end)
 
-events.RENDER:register(function (delta, ctx)
+events.WORLD_RENDER:register(function (delta, ctx)
     if (currentCameraMode == camera_modes.STANDARD) then
         renderer:setCameraPivot(nil);
         renderer:setCameraRot(nil);
@@ -150,16 +153,8 @@ events.RENDER:register(function (delta, ctx)
 end)
 events.MOUSE_MOVE:register(function (x, y)
     if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then
-        if (kbCameraFov:isPressed()) then
-            local fov = client.getFOV();
-            cameraFov = math.clamp(cameraFov + ((x + y) * (1 / fov)), 0.1, 170/fov);
-        elseif (kbCameraRoll:isPressed()) then
-            cameraRotation.z = cameraRotation.z + ((x / 2.5) * configuration.camera_sensetivity);
-        else
-            cameraRotation.y = cameraRotation.y + ((x / 2.5) * configuration.camera_sensetivity);
-            cameraRotation.x = cameraRotation.x + ((y / 2.5) * configuration.camera_sensetivity);
-        end
-        
+        cameraRotation.y = cameraRotation.y + ((x / 2.5) * configuration.camera_sensetivity * cameraFov);
+        cameraRotation.x = cameraRotation.x + ((y / 2.5) * configuration.camera_sensetivity * cameraFov);
     end
     return currentCameraMode ~= camera_modes.STANDARD;
 end)
@@ -173,7 +168,18 @@ events.MOUSE_SCROLL:register(function (dir)
         if (kbDivide:isPressed()) then
             mod = mod / configuration.camera_move_divide_speed;
         end
-        cameraSpeedModifier = math.clamp(cameraSpeedModifier + (dir/10) * mod, 0.1, 10);
+        local modifyFov = kbCameraFov:isPressed()
+        local modifyRoll = kbCameraRoll:isPressed();
+        if (not (modifyFov or modifyRoll)) then
+            cameraSpeedModifier = math.clamp(cameraSpeedModifier + (dir/10) * mod, 0.1, 10);
+        elseif (modifyFov and modifyRoll) then
+            positionCorrectionTicks = math.clamp(positionCorrectionTicks + dir, 1, 40);
+        elseif (modifyFov) then
+            local fov = client.getFOV();
+            cameraFov = math.clamp(cameraFov + (-dir * (1 / fov)) * mod, 0.1, 170/fov);
+        elseif (modifyRoll) then
+            cameraRotation.z = cameraRotation.z + (dir * configuration.camera_fov_correct_speed);
+        end
     end
     return currentCameraMode ~= camera_modes.STANDARD;
 end)

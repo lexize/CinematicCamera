@@ -21,6 +21,10 @@ local configurationDescription = {
         optionType = optionTypes.NUMBER,
         defaultValue = 1/4
     },
+    camera_fov_correct_speed = {
+        optionType = optionTypes.NUMBER,
+        defaultValue = 90/8
+    },
     camera_move_multiply_speed = {
         optionType = optionTypes.NUMBER,
         defaultValue = 2
