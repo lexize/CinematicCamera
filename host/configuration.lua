@@ -23,11 +23,11 @@ local configurationDescription = {
     },
     camera_move_multiply_speed = {
         optionType = optionTypes.NUMBER,
-        defaultValue = 4
+        defaultValue = 2
     },
     camera_move_divide_speed = {
         optionType = optionTypes.NUMBER,
-        defaultValue = 4
+        defaultValue = 2
     },
     camera_sensetivity = {
         optionType = optionTypes.SLIDER,
