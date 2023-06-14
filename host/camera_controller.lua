@@ -23,7 +23,6 @@ local nextCameraFov = 1;
 local targetCameraFov = 1;
 local cameraSpeedModifier = 1;
 local moveSmoothing = vec(0,0,0);
-local fovSmoothing = 0;
 local positionCorrectionTicks = 5;
 local rotationCorrectionTicks = 5;
 local fovCorrectionTicks = 5;
@@ -46,6 +45,12 @@ local getters = {
     end,
     pos_correction_ticks = function ()
         return positionCorrectionTicks
+    end,
+    rot_correction_ticks = function ()
+        return rotationCorrectionTicks
+    end,
+    fov_correction_ticks = function ()
+        return fovCorrectionTicks
     end
 }
 
@@ -67,8 +72,7 @@ local kbMoveDown = keybinds.move_down;
 local kbSwitchCameraMode = keybinds.switch_camera_mode;
 local kbCameraFov = keybinds.camera_fov;
 local kbCameraRoll = keybinds.camera_roll;
-local kbResetCameraFov = keybinds.reset_camera_fov;
-local kbResetCameraRoll = keybinds.reset_camera_roll;
+local kbCameraReset = keybinds.camera_reset;
 local kbMultiply = keybinds.modifier_multiply;
 local kbDivide = keybinds.modifier_divide;
 
@@ -98,15 +102,27 @@ kbSwitchCameraMode.press = function (self)
     end
 end
 
-kbResetCameraFov.press = function ()
+kbCameraReset.press = function ()
     if (lockIfNotOnStandard()) then
-        targetCameraFov = 1;
-        return true;
-    end
-end
-kbResetCameraRoll.press = function ()
-    if (lockIfNotOnStandard()) then
-        targetCameraRot.z = 0;
+        local modifyFov = kbCameraFov:isPressed();
+        local modifyRoll = kbCameraRoll:isPressed();
+        if (not (modifyFov or modifyRoll)) then
+            cameraSpeedModifier = 1;
+        elseif (modifyFov and not modifyRoll) then
+            targetCameraFov = 1;
+        elseif (modifyRoll and not modifyFov) then
+            targetCameraPosition.z = 0;
+        else
+            local mult = kbMultiply:isPressed();
+            local div = kbDivide:isPressed();
+            if (not (mult or div)) then
+                positionCorrectionTicks = 5;
+            elseif (mult) then
+                rotationCorrectionTicks = 5;
+            elseif (div) then
+                fovCorrectionTicks = 5;
+            end
+        end
         return true;
     end
 end
@@ -139,10 +155,12 @@ events.WORLD_TICK:register(function ()
     ) / positionCorrectionTicks;
     moveSmoothing = moveSmoothing + positionSmoothingAddition;
     moveVec = configuration.camera_move_speed * moveSmoothing;
-    local rotDiff = targetCameraRot - currentCameraRot;
-    nextCameraRot.x = utils.addTowards(nextCameraRot.x, targetCameraRot.x, rotDiff.x / rotationCorrectionTicks);
-    nextCameraRot.y = utils.addTowards(nextCameraRot.y, targetCameraRot.y, rotDiff.y / rotationCorrectionTicks);
-    nextCameraRot.z = utils.addTowards(nextCameraRot.z, targetCameraRot.z, rotDiff.z / rotationCorrectionTicks);
+    if (rotationCorrectionTicks ~= 0) then
+        local rotDiff = targetCameraRot - currentCameraRot;
+        nextCameraRot.x = utils.addTowards(nextCameraRot.x, targetCameraRot.x, rotDiff.x / rotationCorrectionTicks);
+        nextCameraRot.y = utils.addTowards(nextCameraRot.y, targetCameraRot.y, rotDiff.y / rotationCorrectionTicks);
+        nextCameraRot.z = utils.addTowards(nextCameraRot.z, targetCameraRot.z, rotDiff.z / rotationCorrectionTicks);
+    end
     nextCameraFov = utils.addTowards(nextCameraFov, targetCameraFov, (targetCameraFov - currentCameraFov) / fovCorrectionTicks);
     targetCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
 end)
@@ -174,6 +192,10 @@ events.MOUSE_MOVE:register(function (x, y)
     if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then
         targetCameraRot.y = targetCameraRot.y + ((x / 2.5) * configuration.camera_sensetivity * targetCameraFov);
         targetCameraRot.x = targetCameraRot.x + ((y / 2.5) * configuration.camera_sensetivity * targetCameraFov);
+        if (rotationCorrectionTicks == 0) then
+            currentCameraRot = targetCameraRot:copy();
+            nextCameraRot = targetCameraRot:copy();
+        end
     end
     return currentCameraMode ~= camera_modes.STANDARD;
 end)
@@ -192,7 +214,15 @@ events.MOUSE_SCROLL:register(function (dir)
         if (not (modifyFov or modifyRoll)) then
             cameraSpeedModifier = math.clamp(cameraSpeedModifier + (dir/10) * mod, 0.1, 10);
         elseif (modifyFov and modifyRoll) then
-            positionCorrectionTicks = math.clamp(positionCorrectionTicks + dir, 1, 40);
+            local mult = kbMultiply:isPressed();
+            local div = kbDivide:isPressed();
+            if (not (mult or div)) then
+                positionCorrectionTicks = math.clamp(positionCorrectionTicks+dir, 1, 40);
+            elseif (mult) then
+                rotationCorrectionTicks = math.clamp(rotationCorrectionTicks+dir, 0, 40);
+            elseif (div) then
+                fovCorrectionTicks = math.clamp(fovCorrectionTicks+dir, 1, 40);
+            end
         elseif (modifyFov) then
             local fov = client.getFOV();
             targetCameraFov = math.clamp(math.exp(math.log(targetCameraFov) + (-dir * (1 / fov)) * mod), 5/fov, 170/fov);

@@ -7,8 +7,7 @@ local defaultKeybinds = {
     {"move_down", "key.keyboard.left.shift"},
     {"camera_fov", "key.mouse.left"},
     {"camera_roll", "key.mouse.right"},
-    {"reset_camera_fov", "key.keyboard.unknown"},
-    {"reset_camera_roll", "key.keyboard.unknown"},
+    {"camera_reset", "key.mouse.middle"},
 
 
     {"modifier_multiply", "key.keyboard.left.control"},
