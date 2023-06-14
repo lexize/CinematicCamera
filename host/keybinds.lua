@@ -5,6 +5,10 @@ local defaultKeybinds = {
     {"move_right", "key.keyboard.d"},
     {"move_up", "key.keyboard.space"},
     {"move_down", "key.keyboard.left.control"},
+    {"camera_fov", "key.mouse.left"},
+    {"camera_roll", "key.mouse.right"},
+    {"reset_camera_fov", "key.keyboard.unknown"},
+    {"reset_camera_roll", "key.keyboard.unknown"},
 
 
     {"modifier_multiply", "key.keyboard.left.shift"},
@@ -27,8 +31,12 @@ local loadedKeybinds = {};
 
 for _, keybindDescriptor in ipairs(defaultKeybinds) do
     local keybind = keybindDescriptor[1];
-    local key = savedKeybinds[keybind] or keybindDescriptor[2];
+    local key = keybindDescriptor[2];
     local keybindObject = keybinds:newKeybind(translation["keybind."..keybind], key);
+    local savedKey = savedKeybinds[keybind];
+    if (savedKey ~= nil) then
+        keybindObject:key(savedKey);
+    end
     loadedKeybinds[keybind] = keybindObject;
 end
 

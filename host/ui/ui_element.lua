@@ -5,10 +5,14 @@ local ui_element = {};
 
 local uiElementMetatable = {};
 uiElementMetatable.__index = ui_element;
-uiElementMetatable.__type = "UIElement"; 
 
-function ui_element:init()
-	setmetatable(self, uiElementMetatable);
+---@return UIElement
+function ui_element.init()
+	return setmetatable({}, uiElementMetatable);
+end
+
+function ui_element.UIElement()
+    
 end
 
 ---@param delta number
@@ -89,4 +93,6 @@ function ui_element:getSize()
     return vec(self:getWidth(), self:getHeight());
 end
 
-return require("utils").createReadonlyTable(uiElementMetatable);
+local tbl = {element = ui_element, metatable = uiElementMetatable};
+
+return require("utils").createReadonlyTable(tbl);
