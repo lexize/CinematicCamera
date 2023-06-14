@@ -1,6 +1,7 @@
 local keybinds = require("host.keybinds");
 local configuration = require("host.configuration").values;
-local translation = require("utils.translation");
+local utils = require("utils");
+--local translation = require("utils.translation");
 
 ---@enum CameraModes
 local camera_modes = {
@@ -13,25 +14,32 @@ local rotationAxis = vec(0,1,0);
 
 local currentCameraMode = camera_modes.STANDARD;
 local currentCameraPosition = vec(0,0,0);
-local nextCameraPosition = vec(0,0,0);
-local cameraRotation = vec(0,0,0);
-local cameraFov = 1;
+local targetCameraPosition = vec(0,0,0);
+local currentCameraRot = vec(0,0,0);
+local nextCameraRot = vec(0,0,0);
+local targetCameraRot = vec(0,0,0);
+local currentCameraFov = 1;
+local nextCameraFov = 1;
+local targetCameraFov = 1;
 local cameraSpeedModifier = 1;
-local moveSmothing = vec(0,0,0);
+local moveSmoothing = vec(0,0,0);
+local fovSmoothing = 0;
 local positionCorrectionTicks = 5;
+local rotationCorrectionTicks = 5;
+local fovCorrectionTicks = 5;
 
 local getters = {
     position = function ()
         return currentCameraPosition
     end,
     next_position = function ()
-        return nextCameraPosition
+        return targetCameraPosition
     end,
     rotation = function ()
-        return cameraRotation
+        return targetCameraRot
     end,
     fov = function ()
-        return cameraFov
+        return targetCameraFov
     end,
     camera_speed = function ()
         return cameraSpeedModifier
@@ -83,28 +91,32 @@ kbSwitchCameraMode.press = function (self)
     currentCameraMode = (currentCameraMode + 1) % 3;
     if (currentCameraMode == camera_modes.EDIT) then
         currentCameraPosition = player:getPos() + vec(0,player:getEyeHeight(), 0);
-        nextCameraPosition = currentCameraPosition:copy();
-        cameraRotation = player:getRot().xy_;
+        targetCameraPosition = currentCameraPosition:copy();
+        targetCameraRot = player:getRot().xy_;
+        currentCameraRot = targetCameraRot:copy();
+        nextCameraRot = targetCameraRot:copy();
     end
 end
 
 kbResetCameraFov.press = function ()
     if (lockIfNotOnStandard()) then
-        cameraFov = 1;
+        targetCameraFov = 1;
         return true;
     end
 end
 kbResetCameraRoll.press = function ()
     if (lockIfNotOnStandard()) then
-        cameraRotation.z = 0;
+        targetCameraRot.z = 0;
         return true;
     end
 end
 
 events.WORLD_TICK:register(function ()
     if (currentCameraMode ~= camera_modes.EDIT) then return end
-    currentCameraPosition = nextCameraPosition:copy();
-    local yaw = cameraRotation.y;
+    currentCameraPosition = targetCameraPosition:copy();
+    currentCameraRot = nextCameraRot:copy();
+    currentCameraFov = nextCameraFov;
+    local yaw = currentCameraRot.y;
     local moveVec = vec(0,0,0);
     if (kbMoveForward:isPressed()) then moveVec.z = moveVec.z + 1; end
     if (kbMoveBackward:isPressed()) then moveVec.z = moveVec.z - 1; end
@@ -120,14 +132,19 @@ events.WORLD_TICK:register(function ()
     if (kbDivide:isPressed()) then
         speedModifier = speedModifier / configuration.camera_move_divide_speed;
     end
-    local smoothingAddition = vec(
-        (math.sign(moveVec.x) - (moveSmothing.x / speedModifier)) * speedModifier,
-        (math.sign(moveVec.y) - (moveSmothing.y / speedModifier)) * speedModifier,
-        (math.sign(moveVec.z) - (moveSmothing.z / speedModifier)) * speedModifier
+    local positionSmoothingAddition = vec(
+        (math.sign(moveVec.x) - (moveSmoothing.x / speedModifier)) * speedModifier,
+        (math.sign(moveVec.y) - (moveSmoothing.y / speedModifier)) * speedModifier,
+        (math.sign(moveVec.z) - (moveSmoothing.z / speedModifier)) * speedModifier
     ) / positionCorrectionTicks;
-    moveSmothing = moveSmothing + smoothingAddition;
-    moveVec = configuration.camera_move_speed * moveSmothing;
-    nextCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
+    moveSmoothing = moveSmoothing + positionSmoothingAddition;
+    moveVec = configuration.camera_move_speed * moveSmoothing;
+    local rotDiff = targetCameraRot - currentCameraRot;
+    nextCameraRot.x = utils.addTowards(nextCameraRot.x, targetCameraRot.x, rotDiff.x / rotationCorrectionTicks);
+    nextCameraRot.y = utils.addTowards(nextCameraRot.y, targetCameraRot.y, rotDiff.y / rotationCorrectionTicks);
+    nextCameraRot.z = utils.addTowards(nextCameraRot.z, targetCameraRot.z, rotDiff.z / rotationCorrectionTicks);
+    nextCameraFov = utils.addTowards(nextCameraFov, targetCameraFov, (targetCameraFov - currentCameraFov) / fovCorrectionTicks);
+    targetCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
 end)
 
 events.WORLD_RENDER:register(function (delta, ctx)
@@ -139,10 +156,12 @@ events.WORLD_RENDER:register(function (delta, ctx)
             Screen = nil;
         end
     elseif (currentCameraMode == camera_modes.EDIT) then
-        local pos = math.lerp(currentCameraPosition, nextCameraPosition, delta);
+        local pos = math.lerp(currentCameraPosition, targetCameraPosition, delta);
         renderer:setCameraPivot(pos);
-        renderer:setCameraRot(cameraRotation);
-        renderer:setFOV(cameraFov);
+        local rot = math.lerp(currentCameraRot, nextCameraRot, delta);
+        renderer:setCameraRot(rot);
+        local fov = math.lerp(currentCameraFov, nextCameraFov, delta);
+        renderer:setFOV(fov);
         if (Screen ~= editInfoTable) then
             Screen = editInfoTable;
         end
@@ -153,8 +172,8 @@ events.WORLD_RENDER:register(function (delta, ctx)
 end)
 events.MOUSE_MOVE:register(function (x, y)
     if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then
-        cameraRotation.y = cameraRotation.y + ((x / 2.5) * configuration.camera_sensetivity * cameraFov);
-        cameraRotation.x = cameraRotation.x + ((y / 2.5) * configuration.camera_sensetivity * cameraFov);
+        targetCameraRot.y = targetCameraRot.y + ((x / 2.5) * configuration.camera_sensetivity * targetCameraFov);
+        targetCameraRot.x = targetCameraRot.x + ((y / 2.5) * configuration.camera_sensetivity * targetCameraFov);
     end
     return currentCameraMode ~= camera_modes.STANDARD;
 end)
@@ -176,9 +195,9 @@ events.MOUSE_SCROLL:register(function (dir)
             positionCorrectionTicks = math.clamp(positionCorrectionTicks + dir, 1, 40);
         elseif (modifyFov) then
             local fov = client.getFOV();
-            cameraFov = math.clamp(cameraFov + (-dir * (1 / fov)) * mod, 0.1, 170/fov);
+            targetCameraFov = math.clamp(math.exp(math.log(targetCameraFov) + (-dir * (1 / fov)) * mod), 5/fov, 170/fov);
         elseif (modifyRoll) then
-            cameraRotation.z = cameraRotation.z + (dir * configuration.camera_fov_correct_speed);
+            targetCameraRot.z = targetCameraRot.z + (dir * mod * configuration.camera_fov_correct_speed);
         end
     end
     return currentCameraMode ~= camera_modes.STANDARD;

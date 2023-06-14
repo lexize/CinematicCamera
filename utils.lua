@@ -37,4 +37,14 @@ function utils.createRecurviseReadonlyTable(table)
 	return setmetatable({}, metatable);
 end
 
+---@param a number
+---@param b number
+---@param v number
+---@return number
+function utils.addTowards(a, b, v)
+	local diff = b - a;
+	local addition = math.min(math.abs(diff), math.abs(v)) * math.sign(diff);
+	return a + addition;
+end
+
 return utils.createReadonlyTable(utils);

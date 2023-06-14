@@ -4,14 +4,14 @@ local defaultKeybinds = {
     {"move_left", "key.keyboard.a"},
     {"move_right", "key.keyboard.d"},
     {"move_up", "key.keyboard.space"},
-    {"move_down", "key.keyboard.left.control"},
+    {"move_down", "key.keyboard.left.shift"},
     {"camera_fov", "key.mouse.left"},
     {"camera_roll", "key.mouse.right"},
     {"reset_camera_fov", "key.keyboard.unknown"},
     {"reset_camera_roll", "key.keyboard.unknown"},
 
 
-    {"modifier_multiply", "key.keyboard.left.shift"},
+    {"modifier_multiply", "key.keyboard.left.control"},
     {"modifier_divide", "key.keyboard.left.alt"},
     {"switch_camera_mode", "key.keyboard.f7"}
 };
