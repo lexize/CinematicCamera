@@ -5,5 +5,10 @@
 	],
 	"autoScripts": [
 		"main"
-	]
+	],
+	"customizations" : {
+		"camera": {
+			"parentType": "World"
+		}
+	}
 }

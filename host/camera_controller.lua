@@ -127,43 +127,60 @@ kbCameraReset.press = function ()
     end
 end
 
+local syncTick = 0;
+local posSyncTick = 5;
+
 events.WORLD_TICK:register(function ()
-    if (currentCameraMode ~= camera_modes.EDIT) then return end
-    currentCameraPosition = targetCameraPosition:copy();
-    currentCameraRot = nextCameraRot:copy();
-    currentCameraFov = nextCameraFov;
-    local yaw = currentCameraRot.y;
-    local moveVec = vec(0,0,0);
-    if (kbMoveForward:isPressed()) then moveVec.z = moveVec.z + 1; end
-    if (kbMoveBackward:isPressed()) then moveVec.z = moveVec.z - 1; end
-    if (kbMoveLeft:isPressed()) then moveVec.x = moveVec.x + 1; end
-    if (kbMoveRight:isPressed()) then moveVec.x = moveVec.x - 1; end
-    moveVec.x_z = moveVec.x_z:normalized();
-    if (kbMoveUp:isPressed()) then moveVec.y = moveVec.y + 1; end
-    if (kbMoveDown:isPressed()) then moveVec.y = moveVec.y - 1; end
-    local speedModifier = cameraSpeedModifier;
-    if (kbMultiply:isPressed()) then
-        speedModifier = speedModifier * configuration.camera_move_multiply_speed;
+    if (currentCameraMode == camera_modes.EDIT) then
+        currentCameraPosition = targetCameraPosition:copy();
+        currentCameraRot = nextCameraRot:copy();
+        currentCameraFov = nextCameraFov;
+        local yaw = currentCameraRot.y;
+        local moveVec = vec(0,0,0);
+        if (kbMoveForward:isPressed()) then moveVec.z = moveVec.z + 1; end
+        if (kbMoveBackward:isPressed()) then moveVec.z = moveVec.z - 1; end
+        if (kbMoveLeft:isPressed()) then moveVec.x = moveVec.x + 1; end
+        if (kbMoveRight:isPressed()) then moveVec.x = moveVec.x - 1; end
+        moveVec.x_z = moveVec.x_z:normalized();
+        if (kbMoveUp:isPressed()) then moveVec.y = moveVec.y + 1; end
+        if (kbMoveDown:isPressed()) then moveVec.y = moveVec.y - 1; end
+        local speedModifier = cameraSpeedModifier;
+        if (kbMultiply:isPressed()) then
+            speedModifier = speedModifier * configuration.camera_move_multiply_speed;
+        end
+        if (kbDivide:isPressed()) then
+            speedModifier = speedModifier / configuration.camera_move_divide_speed;
+        end
+        local positionSmoothingAddition = vec(
+            (math.sign(moveVec.x) - (moveSmoothing.x / speedModifier)) * speedModifier,
+            (math.sign(moveVec.y) - (moveSmoothing.y / speedModifier)) * speedModifier,
+            (math.sign(moveVec.z) - (moveSmoothing.z / speedModifier)) * speedModifier
+        ) / positionCorrectionTicks;
+        moveSmoothing = moveSmoothing + positionSmoothingAddition;
+        moveVec = configuration.camera_move_speed * moveSmoothing;
+        if (rotationCorrectionTicks ~= 0) then
+            local rotDiff = targetCameraRot - currentCameraRot;
+            nextCameraRot.x = utils.addTowards(nextCameraRot.x, targetCameraRot.x, rotDiff.x / rotationCorrectionTicks);
+            nextCameraRot.y = utils.addTowards(nextCameraRot.y, targetCameraRot.y, rotDiff.y / rotationCorrectionTicks);
+            nextCameraRot.z = utils.addTowards(nextCameraRot.z, targetCameraRot.z, rotDiff.z / rotationCorrectionTicks);
+        end
+        nextCameraFov = utils.addTowards(nextCameraFov, targetCameraFov, (targetCameraFov - currentCameraFov) / fovCorrectionTicks);
+        targetCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
     end
-    if (kbDivide:isPressed()) then
-        speedModifier = speedModifier / configuration.camera_move_divide_speed;
+
+    if (syncTick % posSyncTick == 0) then
+        if (currentCameraMode == 0) then
+            pings.cameraMove(); 
+        else
+            pings.cameraMove(currentCameraPosition, currentCameraRot); 
+        end
     end
-    local positionSmoothingAddition = vec(
-        (math.sign(moveVec.x) - (moveSmoothing.x / speedModifier)) * speedModifier,
-        (math.sign(moveVec.y) - (moveSmoothing.y / speedModifier)) * speedModifier,
-        (math.sign(moveVec.z) - (moveSmoothing.z / speedModifier)) * speedModifier
-    ) / positionCorrectionTicks;
-    moveSmoothing = moveSmoothing + positionSmoothingAddition;
-    moveVec = configuration.camera_move_speed * moveSmoothing;
-    if (rotationCorrectionTicks ~= 0) then
-        local rotDiff = targetCameraRot - currentCameraRot;
-        nextCameraRot.x = utils.addTowards(nextCameraRot.x, targetCameraRot.x, rotDiff.x / rotationCorrectionTicks);
-        nextCameraRot.y = utils.addTowards(nextCameraRot.y, targetCameraRot.y, rotDiff.y / rotationCorrectionTicks);
-        nextCameraRot.z = utils.addTowards(nextCameraRot.z, targetCameraRot.z, rotDiff.z / rotationCorrectionTicks);
-    end
-    nextCameraFov = utils.addTowards(nextCameraFov, targetCameraFov, (targetCameraFov - currentCameraFov) / fovCorrectionTicks);
-    targetCameraPosition:add(vectors.rotateAroundAxis(-yaw, moveVec, rotationAxis));
+    syncTick = syncTick + 1;
 end)
+
+function pings.cameraMove(tPos, tRot)
+    
+end
 
 events.WORLD_RENDER:register(function (delta, ctx)
     if (currentCameraMode == camera_modes.STANDARD) then
@@ -177,6 +194,19 @@ events.WORLD_RENDER:register(function (delta, ctx)
         local pos = math.lerp(currentCameraPosition, targetCameraPosition, delta);
         renderer:setCameraPivot(pos);
         local rot = math.lerp(currentCameraRot, nextCameraRot, delta);
+        if (renderer:isFirstPerson()) then
+            CameraTransform = nil;
+        else
+            CameraTransform = {
+                pos = pos:copy(),
+                rot = rot:copy()
+            };
+        end
+        
+        if (renderer:isCameraBackwards()) then
+            rot:add(0,180,0);
+            rot:mul(-1,1,1);
+        end
         renderer:setCameraRot(rot);
         local fov = math.lerp(currentCameraFov, nextCameraFov, delta);
         renderer:setFOV(fov);
