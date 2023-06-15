@@ -258,6 +258,10 @@ events.MOUSE_SCROLL:register(function (dir)
             targetCameraFov = math.clamp(math.exp(math.log(targetCameraFov) + (-dir * (1 / fov)) * mod), 5/fov, 170/fov);
         elseif (modifyRoll) then
             targetCameraRot.z = targetCameraRot.z + (dir * mod * configuration.camera_fov_correct_speed);
+            if (rotationCorrectionTicks == 0) then
+                currentCameraRot.z = targetCameraRot.z;
+                nextCameraRot.z = targetCameraRot.z;
+            end
         end
     end
     return currentCameraMode ~= camera_modes.STANDARD;
