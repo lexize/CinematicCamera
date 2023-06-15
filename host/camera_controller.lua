@@ -186,7 +186,7 @@ events.WORLD_RENDER:register(function (delta, ctx)
     end
     local standardMode = currentCameraMode == camera_modes.STANDARD;
     vanilla_model.ALL:setVisible(standardMode);
-    --renderer.renderHUD = standardMode;
+    renderer.renderHUD = standardMode;
 end)
 events.MOUSE_MOVE:register(function (x, y)
     if (currentCameraMode == camera_modes.EDIT and host:getScreen() == nil) then

@@ -1,4 +1,5 @@
 local utils = require("utils");
+local commandManager = require("host.commandManager");
 
 ---@enum OptionType
 local optionTypes = {
@@ -54,5 +55,12 @@ local configuration = {
     descriptors = utils.createRecurviseReadonlyTable(configurationDescription),
     optionTypes = utils.createReadonlyTable(optionTypes)
 };
+
+function commandManager.commands.config(_, action, configOption, ...)
+    local values = {...};
+    if (action == "list") then
+        
+    end
+end
 
 return utils.createReadonlyTable(configuration);
