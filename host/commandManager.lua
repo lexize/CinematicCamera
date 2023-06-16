@@ -3,6 +3,17 @@ commandManager.prefix = "cc$";
 ---@type table<string, fun(inputMessage: string, ...: string)>
 commandManager.commands = {};
 
+---@type table<string, fun(inputMessage: string, ...: string)>
+commandManager.suggestions = {};
+
+---Callback for suggestions. Can be replaced, or even be nil;
+---@param suggestionsTable string[]
+function commandManager.suggestionCallback(suggestionsTable)
+    
+end
+
+local previousChatText = nil;
+
 events.CHAT_SEND_MESSAGE:register(function (message)
     if (string.sub(message, 1, #commandManager.prefix) == commandManager.prefix) then
         local args = {};
@@ -35,6 +46,10 @@ events.CHAT_SEND_MESSAGE:register(function (message)
     end
     
     return message;
+end)
+
+events.TICK:register(function ()
+    
 end)
 
 return commandManager;
