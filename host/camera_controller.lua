@@ -111,7 +111,7 @@ kbCameraReset.press = function ()
         elseif (modifyFov and not modifyRoll) then
             targetCameraFov = 1;
         elseif (modifyRoll and not modifyFov) then
-            targetCameraPosition.z = 0;
+            targetCameraRot.z = 0;
         else
             local mult = kbMultiply:isPressed();
             local div = kbDivide:isPressed();
