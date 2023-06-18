@@ -255,9 +255,9 @@ events.MOUSE_SCROLL:register(function (dir)
             end
         elseif (modifyFov) then
             local fov = client.getFOV();
-            targetCameraFov = math.clamp(math.exp(math.log(targetCameraFov) + (-dir * (1 / fov)) * mod), 5/fov, 170/fov);
+            targetCameraFov = math.clamp(math.exp(math.log(targetCameraFov) + (-dir * (1 / fov) * configuration.camera_fov_addition) * mod), 5/fov, 170/fov);
         elseif (modifyRoll) then
-            targetCameraRot.z = targetCameraRot.z + (dir * mod * configuration.camera_fov_addition);
+            targetCameraRot.z = targetCameraRot.z + (dir * mod * configuration.camera_roll_addition);
             if (rotationCorrectionTicks == 0) then
                 currentCameraRot.z = targetCameraRot.z;
                 nextCameraRot.z = targetCameraRot.z;

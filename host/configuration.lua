@@ -32,6 +32,10 @@ local configOptionDescriptors = {
         optionType = optionTypes.NUMBER,
         defaultValue = 90/8
     },
+    camera_roll_addition = {
+        optionType = optionTypes.NUMBER,
+        defaultValue = 90/8
+    },
     camera_move_multiply_speed = {
         optionType = optionTypes.NUMBER,
         defaultValue = 2
